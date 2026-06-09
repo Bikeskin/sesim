@@ -52,14 +52,15 @@ const KATEGORILER = [
     'Daha iyiyim.'
   ]},
   { id:'sevgi', ad:'Sevgi', cumleler:[
-    'Burak',
-    'Bitanem',
-    'Seni seviyorum.',
+    { t:'Burak', ses:'burak.mp3' },
+    { t:'Bitanem', ses:'bitanem.mp3' },
+    { t:'Seni seviyorum.', ses:'seni_seviyorum.mp3' },
     'İyi ki yanımdasın.',
     'Sarılır mısın?',
     'Çok iyisin, teşekkür ederim.',
     'Merak etme, geçecek.',
-    'Biraz yalnız kalmak istiyorum.'
+    'Biraz yalnız kalmak istiyorum.',
+    { t:'Götümü ye 😄', ses:'gotumu_ye.mp3' }
   ]},
   { id:'hastane', ad:'Hastane', cumleler:[
     'Doktoru çağırır mısın?',
@@ -253,6 +254,8 @@ function pickVoice(){
 
 const bubble = document.getElementById('bubble');
 let lastText = '';
+let lastSes = null;
+let currentAudio = null;
 let resumeTimer = null;
 
 function setSpeaking(on){
@@ -271,10 +274,16 @@ function showText(t){
   bubble.classList.remove('empty');
 }
 
+function stopAll(){
+  try{ if (synth) synth.cancel(); }catch(e){}
+  if (currentAudio){ try{ currentAudio.pause(); }catch(e){} currentAudio = null; }
+  setSpeaking(false);
+}
+
+// Sadece yapay ses (yazılan metin ve dosyası olmayan cümleler için)
 function speak(text){
   text = (text||'').trim();
   if (!text) return;
-  lastText = text;
   showText(text);
   if (!synth){ return; }
   try{
@@ -289,6 +298,32 @@ function speak(text){
     synth.speak(u);
   }catch(e){ setSpeaking(false); }
 }
+
+// Gerçek ses kaydını çalar; dosya bulunamazsa yapay sese düşer
+function playClip(file, text){
+  showText(text);
+  stopAll();
+  try{
+    currentAudio = new Audio('ses/' + file);
+    currentAudio.onplay  = ()=> setSpeaking(true);
+    currentAudio.onended = ()=> setSpeaking(false);
+    currentAudio.onerror = ()=> { setSpeaking(false); speak(text); };
+    currentAudio.play().catch(()=> speak(text));
+  }catch(e){ speak(text); }
+}
+
+// Tek giriş noktası: ses dosyası varsa onu, yoksa yapay sesi kullanır
+function say(text, ses){
+  text = (text||'').trim();
+  if (!text) return;
+  lastText = text;
+  lastSes = ses || null;
+  if (ses) playClip(ses, text); else speak(text);
+}
+
+// Cümle hem düz metin ("...") hem de {t, ses} nesnesi olabilir
+function cText(c){ return (typeof c === 'string') ? c : c.t; }
+function cSes(c){ return (typeof c === 'string') ? null : (c.ses || null); }
 
 /* ---------- Sekmeler ve cümleler ---------- */
 const tabsEl = document.getElementById('tabs');
@@ -334,8 +369,8 @@ function selectTab(id){
   kat.cumleler.forEach(c=>{
     const b = document.createElement('button');
     b.className = 'phrase';
-    b.textContent = c;
-    b.onclick = ()=> speak(c);
+    b.textContent = cText(c);
+    b.onclick = ()=> say(cText(c), cSes(c));
     grid.appendChild(b);
   });
   phrasePane.appendChild(grid);
@@ -343,7 +378,7 @@ function selectTab(id){
 
 /* ---------- Yazma modu ---------- */
 const ta = document.getElementById('ta');
-document.getElementById('btnSay').onclick = ()=> speak(ta.value);
+document.getElementById('btnSay').onclick = ()=> say(ta.value, null);
 document.getElementById('btnClear').onclick = ()=>{ ta.value=''; ta.focus(); };
 document.getElementById('btnSave').onclick = ()=>{
   const t = ta.value.trim();
@@ -366,7 +401,7 @@ function renderFavs(){
     f.className = 'fav';
     const span = document.createElement('span');
     span.textContent = t;
-    span.onclick = ()=> speak(t);
+    span.onclick = ()=> say(t, null);
     const x = document.createElement('span');
     x.className = 'x'; x.textContent = '×';
     x.onclick = (e)=>{ e.stopPropagation();
@@ -374,14 +409,14 @@ function renderFavs(){
       store.set('favs', arr); renderFavs();
     };
     f.appendChild(span); f.appendChild(x);
-    f.onclick = ()=> speak(t);
+    f.onclick = ()=> say(t, null);
     wrap.appendChild(f);
   });
 }
 
 /* ---------- Üst kontroller ---------- */
-document.getElementById('btnRepeat').onclick = ()=>{ if (lastText) speak(lastText); };
-document.getElementById('btnStop').onclick = ()=>{ try{ synth.cancel(); }catch(e){} setSpeaking(false); };
+document.getElementById('btnRepeat').onclick = ()=>{ if (lastText) say(lastText, lastSes); };
+document.getElementById('btnStop').onclick = ()=> stopAll();
 
 /* ---------- Hız ---------- */
 const speedEl = document.getElementById('speed');
