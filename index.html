@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sesim">
+<meta name="theme-color" content="#ECEFE8">
+<title>Sesim</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23547156'/><path d='M38 32v36M50 24v52M62 36v28' stroke='white' stroke-width='8' stroke-linecap='round' fill='none'/></svg>">
+
+<!--
+  ============================================================
+  KONUŞMA / CÜMLELER BURADAN DÜZENLENİR
+  Her kategoriye dilediğin kadar cümle ekleyip çıkarabilirsin.
+  Cümleler onun ağzından, birinci tekil şahıs ile yazılmıştır.
+  ============================================================
+-->
+<script>
+const KATEGORILER = [
+  { id:'ihtiyac', ad:'İhtiyaç', cumleler:[
+    'Su içebilir miyim?',
+    'Acıktım.',
+    'Üşüyorum.',
+    'Sıcakladım.',
+    'İlaç saatim geldi mi?',
+    'Tuvalete gitmem lazım.',
+    'Biraz uyumak istiyorum.',
+    'Yastığımı düzeltir misin?',
+    'Yardım eder misin?',
+    'Işığı kapatır mısın?'
+  ]},
+  { id:'kisa', ad:'Kısa', cumleler:[
+    'Evet.',
+    'Hayır.',
+    'Tamam.',
+    'Teşekkür ederim.',
+    'Lütfen.',
+    'Bir dakika.',
+    'Bilmiyorum.',
+    'Anladım.'
+  ]},
+  { id:'duygu', ad:'Nasılım', cumleler:[
+    'İyiyim, merak etme.',
+    'Biraz yorgunum.',
+    'Canım acıyor.',
+    'Boğazım kurudu.',
+    'Başım dönüyor.',
+    'Midem bulanıyor.',
+    'Biraz sıkıldım.',
+    'Daha iyiyim.'
+  ]},
+  { id:'sevgi', ad:'Sevgi', cumleler:[
+    'Seni seviyorum.',
+    'İyi ki yanımdasın.',
+    'Sarılır mısın?',
+    'Çok iyisin, teşekkür ederim.',
+    'Merak etme, geçecek.',
+    'Biraz yalnız kalmak istiyorum.'
+  ]},
+  { id:'hastane', ad:'Hastane', cumleler:[
+    'Doktoru çağırır mısın?',
+    'Ne zaman konuşabilirim?',
+    'İlacımı alabilir miyim?',
+    'Bu normal mi?',
+    'Çok ağrım var.'
+  ]},
+  { id:'gunluk', ad:'Günlük', cumleler:[
+    'Telefonumu uzatır mısın?',
+    'Televizyonu açar mısın?',
+    'Perdeyi açar mısın?',
+    'Biraz yürüyelim mi?',
+    'Müzik açar mısın?'
+  ]}
+];
+</script>
+
+<style>
+  :root{
+    --bg:#ECEFE8;
+    --surface:#FFFFFF;
+    --ink:#26322C;
+    --ink-soft:#5E6B62;
+    --line:#DCE2D6;
+    --sage:#547156;
+    --sage-deep:#3E5641;
+    --honey:#E0A23B;
+    --honey-soft:#F8EBCB;
+    --radius:20px;
+    --tap:#EAF0E6;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:14px 14px 32px;}
+
+  /* ---- Konuşma balonu ---- */
+  .bubble-area{position:sticky;top:0;z-index:5;padding-top:8px;background:linear-gradient(var(--bg) 78%, transparent);}
+  .bubble{
+    background:var(--surface);
+    border:2px solid var(--line);
+    border-radius:24px;
+    padding:22px 22px;
+    min-height:96px;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-size:clamp(26px,7vw,40px);
+    line-height:1.22;font-weight:650;letter-spacing:-0.01em;
+    transition:border-color .25s ease, box-shadow .35s ease;
+    word-break:break-word;
+  }
+  .bubble.empty{color:#AEB7A8;font-weight:500;font-size:clamp(19px,5vw,24px);}
+  .bubble.speaking{
+    border-color:var(--honey);
+    box-shadow:0 0 0 6px var(--honey-soft);
+    animation:pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 5px var(--honey-soft);}
+    50%{box-shadow:0 0 0 11px var(--honey-soft);}
+  }
+  .controls{display:flex;gap:10px;margin-top:10px;}
+  .ctl{
+    flex:1;border:none;border-radius:16px;padding:14px;font-size:17px;font-weight:600;
+    background:var(--surface);color:var(--ink);border:2px solid var(--line);
+    cursor:pointer;font-family:inherit;
+  }
+  .ctl:active{background:var(--tap);}
+  .ctl.primary{background:var(--sage);color:#fff;border-color:var(--sage);}
+  .ctl.primary:active{background:var(--sage-deep);}
+
+  /* ---- Sekmeler ---- */
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding:16px 2px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{
+    flex:0 0 auto;border:2px solid var(--line);background:var(--surface);
+    color:var(--ink-soft);border-radius:999px;padding:11px 18px;font-size:16px;font-weight:600;
+    cursor:pointer;font-family:inherit;white-space:nowrap;
+  }
+  .tab[aria-selected="true"]{background:var(--sage);color:#fff;border-color:var(--sage);}
+  .tab.write{color:var(--sage-deep);}
+  .tab.write[aria-selected="true"]{color:#fff;}
+
+  /* ---- Cümle ızgarası ---- */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;}
+  .phrase{
+    background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);
+    padding:18px 14px;min-height:84px;font-size:19px;font-weight:600;line-height:1.25;
+    color:var(--ink);cursor:pointer;font-family:inherit;text-align:left;
+    display:flex;align-items:center;transition:transform .06s ease, background .15s ease;
+  }
+  .phrase:active{transform:scale(.97);background:var(--tap);}
+
+  /* ---- Yazma modu ---- */
+  .write-pane{margin-top:6px;}
+  textarea{
+    width:100%;min-height:120px;border:2px solid var(--line);border-radius:var(--radius);
+    padding:16px;font-size:22px;font-family:inherit;color:var(--ink);background:var(--surface);
+    resize:none;line-height:1.3;
+  }
+  textarea:focus{outline:none;border-color:var(--sage);}
+  .write-actions{display:flex;gap:10px;margin-top:10px;}
+  .write-actions .ctl{flex:1;}
+  .fav-title{font-size:14px;font-weight:700;color:var(--ink-soft);margin:18px 2px 8px;text-transform:uppercase;letter-spacing:.06em;}
+  .favs{display:flex;flex-wrap:wrap;gap:8px;}
+  .fav{
+    background:var(--honey-soft);border:2px solid #EAD8AC;color:#7A5A14;
+    border-radius:999px;padding:10px 14px 10px 16px;font-size:16px;font-weight:600;
+    cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;
+  }
+  .fav:active{filter:brightness(.96);}
+  .fav .x{font-size:18px;color:#B58A2E;line-height:1;padding:0 2px;}
+  .fav-empty{color:var(--ink-soft);font-size:15px;padding:4px 2px;}
+
+  /* ---- Hız ayarı ---- */
+  .speed{display:flex;align-items:center;gap:8px;margin-top:18px;justify-content:center;color:var(--ink-soft);font-size:15px;font-weight:600;}
+  .seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface);}
+  .seg button{border:none;background:transparent;padding:9px 16px;font-size:15px;font-weight:600;color:var(--ink-soft);font-family:inherit;cursor:pointer;}
+  .seg button[aria-pressed="true"]{background:var(--sage);color:#fff;}
+
+  .hidden{display:none !important;}
+  button:focus-visible{outline:3px solid var(--honey);outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){
+    .bubble.speaking{animation:none;}
+    .phrase:active{transform:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bubble-area">
+    <div id="bubble" class="bubble empty" aria-live="polite">Bir cümleye dokun, senin için söyleyeyim.</div>
+    <div class="controls">
+      <button class="ctl" id="btnRepeat">Tekrar</button>
+      <button class="ctl" id="btnStop">Dur</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs" role="tablist"></div>
+
+  <div id="phrasePane"></div>
+
+  <div id="writePane" class="write-pane hidden">
+    <textarea id="ta" placeholder="Buraya yaz, sonra Söyle'ye dokun…" autocomplete="on" autocapitalize="sentences"></textarea>
+    <div class="write-actions">
+      <button class="ctl primary" id="btnSay">Söyle</button>
+      <button class="ctl" id="btnSave">Kaydet</button>
+      <button class="ctl" id="btnClear">Temizle</button>
+    </div>
+    <div class="fav-title">Kayıtlı cümlelerim</div>
+    <div class="favs" id="favs"></div>
+  </div>
+
+  <div class="speed">
+    <span>Hız</span>
+    <div class="seg" id="speed" role="group" aria-label="Konuşma hızı">
+      <button data-rate="0.8">Yavaş</button>
+      <button data-rate="1" aria-pressed="true">Normal</button>
+      <button data-rate="1.15">Hızlı</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ---------- Depolama (güvenli) ---------- */
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ---------- Konuşma motoru ---------- */
+const synth = window.speechSynthesis;
+let voices = [];
+let rate = store.get('rate') || 1;
+function loadVoices(){ voices = synth ? synth.getVoices() : []; }
+loadVoices();
+if (synth && synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+function pickVoice(){
+  const tr = voices.filter(v => (v.lang||'').toLowerCase().startsWith('tr'));
+  return tr.find(v => /yelda|enhanced|premium|gelişmiş|siri/i.test(v.name)) || tr[0] || null;
+}
+
+const bubble = document.getElementById('bubble');
+let lastText = '';
+let resumeTimer = null;
+
+function setSpeaking(on){
+  bubble.classList.toggle('speaking', on);
+  if (on){
+    // iOS bazen uzun cümlede konuşmayı duraklatır; canlı tutuyoruz.
+    clearInterval(resumeTimer);
+    resumeTimer = setInterval(()=>{ try{ synth.resume(); }catch(e){} }, 4000);
+  } else {
+    clearInterval(resumeTimer);
+  }
+}
+
+function showText(t){
+  bubble.textContent = t;
+  bubble.classList.remove('empty');
+}
+
+function speak(text){
+  text = (text||'').trim();
+  if (!text) return;
+  lastText = text;
+  showText(text);
+  if (!synth){ return; }
+  try{
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'tr-TR';
+    const v = pickVoice(); if (v) u.voice = v;
+    u.rate = rate; u.pitch = 1;
+    u.onstart = ()=> setSpeaking(true);
+    u.onend   = ()=> setSpeaking(false);
+    u.onerror = ()=> setSpeaking(false);
+    synth.speak(u);
+  }catch(e){ setSpeaking(false); }
+}
+
+/* ---------- Sekmeler ve cümleler ---------- */
+const tabsEl = document.getElementById('tabs');
+const phrasePane = document.getElementById('phrasePane');
+const writePane = document.getElementById('writePane');
+
+function renderTabs(){
+  KATEGORILER.forEach((kat, i)=>{
+    const b = document.createElement('button');
+    b.className = 'tab';
+    b.textContent = kat.ad;
+    b.setAttribute('role','tab');
+    b.setAttribute('aria-selected', i===0 ? 'true':'false');
+    b.onclick = ()=> selectTab(kat.id);
+    b.dataset.id = kat.id;
+    tabsEl.appendChild(b);
+  });
+  // Yazma sekmesi
+  const w = document.createElement('button');
+  w.className = 'tab write';
+  w.textContent = '✎ Yaz';
+  w.setAttribute('role','tab');
+  w.setAttribute('aria-selected','false');
+  w.dataset.id = '__write';
+  w.onclick = ()=> selectTab('__write');
+  tabsEl.appendChild(w);
+}
+
+function selectTab(id){
+  [...tabsEl.children].forEach(t => t.setAttribute('aria-selected', t.dataset.id===id ? 'true':'false'));
+  if (id === '__write'){
+    phrasePane.classList.add('hidden');
+    writePane.classList.remove('hidden');
+    renderFavs();
+    return;
+  }
+  writePane.classList.add('hidden');
+  phrasePane.classList.remove('hidden');
+  const kat = KATEGORILER.find(k=>k.id===id);
+  phrasePane.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  kat.cumleler.forEach(c=>{
+    const b = document.createElement('button');
+    b.className = 'phrase';
+    b.textContent = c;
+    b.onclick = ()=> speak(c);
+    grid.appendChild(b);
+  });
+  phrasePane.appendChild(grid);
+}
+
+/* ---------- Yazma modu ---------- */
+const ta = document.getElementById('ta');
+document.getElementById('btnSay').onclick = ()=> speak(ta.value);
+document.getElementById('btnClear').onclick = ()=>{ ta.value=''; ta.focus(); };
+document.getElementById('btnSave').onclick = ()=>{
+  const t = ta.value.trim();
+  if (!t) return;
+  const list = store.get('favs') || [];
+  if (!list.includes(t)){ list.unshift(t); store.set('favs', list.slice(0,40)); }
+  renderFavs();
+};
+
+function renderFavs(){
+  const wrap = document.getElementById('favs');
+  const list = store.get('favs') || [];
+  wrap.innerHTML = '';
+  if (!list.length){
+    wrap.innerHTML = '<div class="fav-empty">Kaydettiğin cümleler burada birikir.</div>';
+    return;
+  }
+  list.forEach(t=>{
+    const f = document.createElement('button');
+    f.className = 'fav';
+    const span = document.createElement('span');
+    span.textContent = t;
+    span.onclick = ()=> speak(t);
+    const x = document.createElement('span');
+    x.className = 'x'; x.textContent = '×';
+    x.onclick = (e)=>{ e.stopPropagation();
+      const arr = (store.get('favs')||[]).filter(i=>i!==t);
+      store.set('favs', arr); renderFavs();
+    };
+    f.appendChild(span); f.appendChild(x);
+    f.onclick = ()=> speak(t);
+    wrap.appendChild(f);
+  });
+}
+
+/* ---------- Üst kontroller ---------- */
+document.getElementById('btnRepeat').onclick = ()=>{ if (lastText) speak(lastText); };
+document.getElementById('btnStop').onclick = ()=>{ try{ synth.cancel(); }catch(e){} setSpeaking(false); };
+
+/* ---------- Hız ---------- */
+const speedEl = document.getElementById('speed');
+[...speedEl.children].forEach(b=>{
+  if (parseFloat(b.dataset.rate)===rate) b.setAttribute('aria-pressed','true');
+  else b.setAttribute('aria-pressed','false');
+  b.onclick = ()=>{
+    rate = parseFloat(b.dataset.rate);
+    store.set('rate', rate);
+    [...speedEl.children].forEach(x=> x.setAttribute('aria-pressed', x===b ? 'true':'false'));
+  };
+});
+
+/* ---------- Ekranı uyanık tut (destekleyen iPhone'larda) ---------- */
+let wakeLock = null;
+async function keepAwake(){
+  try{ if ('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); } }catch(e){}
+}
+document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible') keepAwake(); });
+keepAwake();
+
+/* ---------- Başlat ---------- */
+renderTabs();
+selectTab(KATEGORILER[0].id);
+</script>
+</body>
+</html>
